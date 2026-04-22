@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rewide — See it on your wall</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #F5F0E8;
+  --warm: #FAF8F4;
+  --dark: #1C1C1A;
+  --stone: #8C8880;
+  --gold: #B8945A;
+  --goldl: #D4AE7A;
+  --ink: #2C2A26;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--dark);
+  color: var(--warm);
+  font-family: 'Jost', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.header {
+  padding: 32px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(250,248,244,0.08);
+}
+
+.logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  color: var(--warm);
+  text-decoration: none;
+}
+
+.header-tag {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* ── LAYOUT ── */
+.tool-wrap {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  min-height: calc(100vh - 89px);
+}
+
+/* ── CANVAS SIDE ── */
+.canvas-side {
+  position: relative;
+  background: #141412;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Drop zone */
+.drop-zone {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  cursor: pointer;
+  transition: background 0.3s;
+  z-index: 2;
+}
+
+.drop-zone:hover { background: rgba(184,148,90,0.03); }
+.drop-zone.drag-over { background: rgba(184,148,90,0.06); }
+.drop-zone.hidden { display: none; }
+
+.drop-icon {
+  width: 72px;
+  height: 72px;
+  border: 1px solid rgba(184,148,90,0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  opacity: 0.6;
+  transition: all 0.3s;
+}
+
+.drop-zone:hover .drop-icon {
+  border-color: var(--gold);
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.drop-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--warm);
+  opacity: 0.7;
+  text-align: center;
+}
+
+.drop-sub {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--stone);
+  text-align: center;
+}
+
+.drop-btn {
+  margin-top: 8px;
+  padding: 12px 28px;
+  border: 1px solid rgba(184,148,90,0.4);
+  background: none;
+  color: var(--goldl);
+  font-family: 'Jost', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.drop-btn:hover {
+  background: rgba(184,148,90,0.08);
+  border-color: var(--gold);
+}
+
+/* Room canvas */
+#roomCanvas {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.canvas-container {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-container.active { display: flex; }
+
+/* The actual overlay canvas */
+#overlayCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: move;
+}
+
+/* Controls overlay */
+.canvas-controls {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  gap: 12px;
+  background: rgba(28,28,26,0.85);
+  backdrop-filter: blur(8px);
+  padding: 12px 20px;
+  border: 1px solid rgba(250,248,244,0.08);
+}
+
+.canvas-controls.active { display: flex; }
+
+.ctrl-btn {
+  background: none;
+  border: none;
+  color: rgba(250,248,244,0.6);
+  font-family: 'Jost', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 12px;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ctrl-btn:hover { color: var(--goldl); }
+.ctrl-btn + .ctrl-btn { border-left: 1px solid rgba(250,248,244,0.1); }
+
+.hint {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(250,248,244,0.35);
+  background: rgba(28,28,26,0.6);
+  padding: 6px 16px;
+  white-space: nowrap;
+}
+
+.hint.active { display: block; }
+
+/* ── PANEL SIDE ── */
+.panel {
+  background: var(--warm);
+  padding: 48px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  color: var(--dark);
+}
+
+.panel-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+
+.panel-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1.2;
+  color: var(--dark);
+  margin-bottom: 8px;
+}
+
+.panel-sub {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--stone);
+  margin-bottom: 36px;
+}
+
+/* Print selector */
+.section-label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--stone);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(140,136,128,0.2);
+}
+
+/* Print grid */
+.print-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.print-card {
+  border: 1px solid rgba(140,136,128,0.25);
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+
+.print-card:hover { border-color: rgba(184,148,90,0.5); }
+.print-card.active {
+  border-color: var(--gold);
+  background: rgba(184,148,90,0.05);
+}
+
+.print-card.active::after {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 10px;
+  color: var(--gold);
+}
+
+.print-thumb {
+  width: 100%;
+  aspect-ratio: 3/2;
+  object-fit: cover;
+  display: block;
+  margin-bottom: 10px;
+  background: var(--cream);
+}
+
+.print-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--dark);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.print-author {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+
+.print-price {
+  font-size: 12px;
+  color: var(--stone);
+}
+
+/* Size selector */
+.size-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 28px;
+}
+
+.size-btn {
+  padding: 10px 6px;
+  border: 1px solid rgba(140,136,128,0.25);
+  background: none;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  font-family: 'Jost', sans-serif;
+}
+
+.size-btn:hover { border-color: rgba(184,148,90,0.5); }
+.size-btn.active {
+  border-color: var(--gold);
+  background: rgba(184,148,90,0.05);
+}
+
+.size-dim {
+  display: block;
+  font-size: 12px;
+  color: var(--dark);
+  font-weight: 400;
+  margin-bottom: 2px;
+}
+
+.size-price {
+  display: block;
+  font-size: 10px;
+  color: var(--stone);
+}
+
+/* Scale slider */
+.slider-wrap {
+  margin-bottom: 28px;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.slider-row input[type=range] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 1px;
+  background: rgba(140,136,128,0.3);
+  outline: none;
+}
+
+.slider-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--gold);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider-val {
+  font-size: 11px;
+  color: var(--stone);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: rgba(140,136,128,0.15);
+  margin: 24px 0;
+}
+
+/* Info block */
+.info-block {
+  background: var(--cream);
+  padding: 16px;
+  margin-bottom: 28px;
+}
+
+.info-selected {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--dark);
+  margin-bottom: 4px;
+}
+
+.info-detail {
+  font-size: 11px;
+  color: var(--stone);
+  line-height: 1.6;
+}
+
+.info-price {
+  font-size: 20px;
+  font-family: 'Cormorant Garamond', serif;
+  color: var(--dark);
+  margin-top: 8px;
+}
+
+/* CTA */
+.cta-btn {
+  width: 100%;
+  padding: 18px;
+  background: var(--dark);
+  color: var(--warm);
+  border: none;
+  cursor: pointer;
+  font-family: 'Jost', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  transition: background 0.3s;
+  margin-bottom: 12px;
+}
+
+.cta-btn:hover { background: var(--gold); }
+.cta-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: var(--dark);
+}
+
+.guarantee {
+  font-size: 10px;
+  color: var(--stone);
+  text-align: center;
+  line-height: 1.7;
+  letter-spacing: 0.03em;
+}
+
+/* Instructions */
+.instructions {
+  margin-bottom: 28px;
+}
+
+.step-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(140,136,128,0.12);
+}
+
+.step-row:last-child { border-bottom: none; }
+
+.step-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  color: rgba(184,148,90,0.4);
+  line-height: 1;
+  min-width: 20px;
+}
+
+.step-txt {
+  font-size: 12px;
+  color: var(--stone);
+  line-height: 1.6;
+  padding-top: 2px;
+}
+
+/* Hidden file input */
+#fileInput { display: none; }
+
+/* Notification */
+.notif {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--dark);
+  color: var(--warm);
+  padding: 12px 24px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  border-left: 2px solid var(--gold);
+  transition: transform 0.4s ease;
+  z-index: 1000;
+  white-space: nowrap;
+}
+
+.notif.show { transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 900px) {
+  .tool-wrap { grid-template-columns: 1fr; }
+  .canvas-side { min-height: 60vw; }
+  .header { padding: 20px 24px; }
+  .panel { padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a href="/" class="logo">Rewide</a>
+  <span class="header-tag">Wall Visualiser</span>
+</header>
+
+<div class="tool-wrap">
+
+  <!-- LEFT: Canvas -->
+  <div class="canvas-side" id="canvasSide">
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon">🏠</div>
+      <p class="drop-title">Upload your wall</p>
+      <p class="drop-sub">JPG or PNG · any size</p>
+      <button class="drop-btn" onclick="document.getElementById('fileInput').click()">Choose photo</button>
+    </div>
+
+    <!-- Active canvas -->
+    <div class="canvas-container" id="canvasContainer">
+      <canvas id="overlayCanvas"></canvas>
+      <div class="hint active" id="hint">Drag the print to position it</div>
+    </div>
+
+    <!-- Bottom controls -->
+    <div class="canvas-controls" id="canvasControls">
+      <button class="ctrl-btn" onclick="resetPosition()">↺ Reset position</button>
+      <button class="ctrl-btn" onclick="changeWall()">↑ New wall photo</button>
+      <button class="ctrl-btn" onclick="downloadPreview()">↓ Save preview</button>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Panel -->
+  <div class="panel">
+
+    <p class="panel-eyebrow">Rewide — Wall Visualiser</p>
+    <h1 class="panel-title">See it on your wall</h1>
+    <p class="panel-sub">Upload a photo of your wall. Choose a print and size. Drag it into position.</p>
+
+    <!-- How it works -->
+    <div class="instructions">
+      <div class="step-row">
+        <span class="step-num">1</span>
+        <span class="step-txt">Upload a photo of your wall — natural light works best</span>
+      </div>
+      <div class="step-row">
+        <span class="step-num">2</span>
+        <span class="step-txt">Select a print from the collection below</span>
+      </div>
+      <div class="step-row">
+        <span class="step-num">3</span>
+        <span class="step-txt">Choose your size and drag the print to position</span>
+      </div>
+      <div class="step-row">
+        <span class="step-num">4</span>
+        <span class="step-txt">Happy with it? Go to order and it ships from Tilburg</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Print selector -->
+    <p class="section-label">Choose a print</p>
+    <div class="print-grid" id="printGrid">
+      <!-- Injected by JS -->
+    </div>
+
+    <!-- Size selector -->
+    <p class="section-label">Choose your size</p>
+    <div class="size-grid" id="sizeGrid">
+      <!-- Injected by JS -->
+    </div>
+
+    <!-- Scale -->
+    <div class="slider-wrap">
+      <p class="section-label">Scale</p>
+      <div class="slider-row">
+        <span style="font-size:11px;color:var(--stone);">S</span>
+        <input type="range" id="scaleSlider" min="5" max="60" value="20" oninput="updateScale(this.value)">
+        <span style="font-size:11px;color:var(--stone);">L</span>
+        <span class="slider-val" id="scaleVal">20%</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Selected info -->
+    <div class="info-block" id="infoBlock">
+      <div class="info-selected" id="infoTitle">Select a print above</div>
+      <div class="info-detail" id="infoDetail">Choose a work from the collection to see it on your wall</div>
+      <div class="info-price" id="infoPrice"></div>
+    </div>
+
+    <!-- CTA -->
+    <button class="cta-btn" id="orderBtn" disabled>Order this print</button>
+    <p class="guarantee">Printed in Tilburg · Ships in 7–10 days<br>Free returns within 30 days · Museum-grade materials</p>
+
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+<div class="notif" id="notif"></div>
+
+<script>
+// ── DATA ──
+// In production: replace thumb src with real base64 or Shopify CDN URLs
+const SHOP = 'https://art-for-freedom-2.myshopify.com/products';
+
+const prints = [
+  {
+    id: 'loek-turkey',
+    shopSlug: 'the-freedom-of-turkiye-_-a',
+    title: 'The Freedom of Türkiye',
+    author: 'Loek Luijbregts',
+    location: 'Cappadocia, Türkiye',
+    sizes: [
+      { label: '30×40', price: 175, variant: '30x40' },
+      { label: '50×70', price: 245, variant: '50x70' },
+      { label: '70×100', price: 365, variant: '70x100' }
+    ],
+    src: null,
+    color: 'linear-gradient(160deg, #c4956a 0%, #b8c4d4 50%, #8a7560 100%)',
+    ratio: 4/3
+  },
+  {
+    id: 'ryan-surf',
+    shopSlug: 'le-surf',
+    title: 'Le Surf',
+    author: 'Ryan Le Garrec',
+    location: 'Atlantic Coast',
+    sizes: [
+      { label: '30×40', price: 155, variant: '30x40' },
+      { label: '50×70', price: 215, variant: '50x70' },
+      { label: '70×100', price: 325, variant: '70x100' }
+    ],
+    src: null,
+    color: 'linear-gradient(160deg, #1a3a2a 0%, #4a8a6a 40%, #c8b870 100%)',
+    ratio: 3/2
+  },
+  {
+    id: 'leon-giro',
+    shopSlug: 'skiers-jump-over-tadej',
+    title: 'Skiers Jump Over Tadej',
+    author: 'Léon van Bon',
+    location: 'Giro d\'Italia, Italy',
+    sizes: [
+      { label: '30×40', price: 210, variant: '30x40' },
+      { label: '50×70', price: 285, variant: '50x70' },
+      { label: '70×100', price: 415, variant: '70x100' }
+    ],
+    src: null,
+    color: 'linear-gradient(160deg, #1a2a4a 0%, #e8c060 40%, #c84848 100%)',
+    ratio: 3/4
+  },
+  {
+    id: 'jop-pastel',
+    shopSlug: 'pastel-summer-sky',
+    title: 'Pastel Summer Sky',
+    author: 'Jop Hermans',
+    location: 'Scheveningen, NL',
+    sizes: [
+      { label: '30×40', price: 145, variant: '30x40' },
+      { label: '50×70', price: 195, variant: '50x70' },
+      { label: '70×100', price: 295, variant: '70x100' }
+    ],
+    src: null,
+    color: 'linear-gradient(to bottom, #aac0d8 0%, #f0c0a0 50%, #f8e0d0 100%)',
+    ratio: 3/4
+  }
+];
+
+// ── STATE ──
+let state = {
+  wallImg: null,
+  selectedPrint: null,
+  selectedSize: 0,
+  scale: 20,
+  printX: 0,
+  printY: 0,
+  dragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  printOffsetX: 0,
+  printOffsetY: 0
+};
+
+// ── INIT ──
+function init() {
+  renderPrints();
+  setupCanvas();
+  setupDragDrop();
+}
+
+// ── RENDER PRINTS ──
+function renderPrints() {
+  const grid = document.getElementById('printGrid');
+  grid.innerHTML = prints.map((p, i) => `
+    <div class="print-card" id="card-${p.id}" onclick="selectPrint(${i})">
+      <div class="print-thumb" style="background:${p.color};aspect-ratio:${p.ratio > 1 ? '4/3' : '3/4'};"></div>
+      <div class="print-author">${p.author}</div>
+      <div class="print-name">${p.title}</div>
+      <div class="print-price">From €${p.sizes[0].price}</div>
+    </div>
+  `).join('');
+}
+
+// ── SELECT PRINT ──
+function selectPrint(index) {
+  state.selectedPrint = index;
+  const p = prints[index];
+
+  // Update cards
+  document.querySelectorAll('.print-card').forEach(c => c.classList.remove('active'));
+  document.getElementById(`card-${p.id}`).classList.add('active');
+
+  // Update sizes
+  renderSizes(p);
+
+  // Update info
+  updateInfo();
+
+  // Re-render canvas
+  if (state.wallImg) drawCanvas();
+  else showNotif('Now upload your wall photo →');
+}
+
+// ── RENDER SIZES ──
+function renderSizes(print) {
+  const grid = document.getElementById('sizeGrid');
+  grid.innerHTML = print.sizes.map((s, i) => `
+    <button class="size-btn ${i === state.selectedSize ? 'active' : ''}" onclick="selectSize(${i})">
+      <span class="size-dim">${s.label}</span>
+      <span class="size-price">€${s.price}</span>
+    </button>
+  `).join('');
+}
+
+// ── SELECT SIZE ──
+function selectSize(index) {
+  state.selectedSize = index;
+  document.querySelectorAll('.size-btn').forEach((b, i) => b.classList.toggle('active', i === index));
+  updateInfo();
+  if (state.wallImg) drawCanvas();
+}
+
+// ── UPDATE INFO ──
+function updateInfo() {
+  if (state.selectedPrint === null) return;
+  const p = prints[state.selectedPrint];
+  const s = p.sizes[state.selectedSize];
+  document.getElementById('infoTitle').textContent = p.title;
+  document.getElementById('infoDetail').textContent = `${p.author} · ${p.location} · ${s.label} cm`;
+  document.getElementById('infoPrice').textContent = `€${s.price}`;
+  document.getElementById('orderBtn').disabled = false;
+  document.getElementById('orderBtn').textContent = `Order this print — €${s.price}`;
+}
+
+// ── UPDATE SCALE ──
+function updateScale(val) {
+  state.scale = parseInt(val);
+  document.getElementById('scaleVal').textContent = val + '%';
+  if (state.wallImg) drawCanvas();
+}
+
+// ── FILE HANDLING ──
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) loadWallImage(file);
+}
+
+function loadWallImage(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      state.wallImg = img;
+      state.printX = 0.5;
+      state.printY = 0.4;
+      showCanvas();
+      if (state.selectedPrint === null) {
+        showNotif('Wall loaded — now choose a print →');
+      } else {
+        drawCanvas();
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── SHOW CANVAS ──
+function showCanvas() {
+  document.getElementById('dropZone').classList.add('hidden');
+  document.getElementById('canvasContainer').classList.add('active');
+  document.getElementById('canvasControls').classList.add('active');
+}
+
+// ── CANVAS SETUP ──
+function setupCanvas() {
+  const canvas = document.getElementById('overlayCanvas');
+  const side = document.getElementById('canvasSide');
+
+  function resize() {
+    canvas.width = side.clientWidth;
+    canvas.height = side.clientHeight;
+    if (state.wallImg) drawCanvas();
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Mouse drag
+  canvas.addEventListener('mousedown', startDrag);
+  canvas.addEventListener('mousemove', onDrag);
+  canvas.addEventListener('mouseup', endDrag);
+  canvas.addEventListener('mouseleave', endDrag);
+
+  // Touch drag
+  canvas.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    startDragAt(t.clientX, t.clientY, canvas);
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    onDragAt(t.clientX, t.clientY, canvas);
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', endDrag);
+}
+
+function getPrintRect(canvas) {
+  if (!state.wallImg || state.selectedPrint === null) return null;
+  const p = prints[state.selectedPrint];
+  const pw = canvas.width * (state.scale / 100);
+  const ph = pw / p.ratio;
+  const px = state.printX * canvas.width - pw / 2;
+  const py = state.printY * canvas.height - ph / 2;
+  return { x: px, y: py, w: pw, h: ph };
+}
+
+function startDrag(e) {
+  startDragAt(e.clientX, e.clientY, e.target);
+}
+
+function startDragAt(clientX, clientY, canvas) {
+  if (state.selectedPrint === null) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = clientX - rect.left;
+  const my = clientY - rect.top;
+  const pr = getPrintRect(canvas);
+  if (!pr) return;
+
+  if (mx >= pr.x && mx <= pr.x + pr.w && my >= pr.y && my <= pr.y + pr.h) {
+    state.dragging = true;
+    state.dragStartX = mx;
+    state.dragStartY = my;
+    state.printOffsetX = state.printX;
+    state.printOffsetY = state.printY;
+    canvas.style.cursor = 'grabbing';
+    document.getElementById('hint').classList.remove('active');
+  }
+}
+
+function onDrag(e) {
+  onDragAt(e.clientX, e.clientY, e.target);
+}
+
+function onDragAt(clientX, clientY, canvas) {
+  if (!state.dragging) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = clientX - rect.left;
+  const my = clientY - rect.top;
+  const dx = (mx - state.dragStartX) / canvas.width;
+  const dy = (my - state.dragStartY) / canvas.height;
+  state.printX = Math.max(0.05, Math.min(0.95, state.printOffsetX + dx));
+  state.printY = Math.max(0.05, Math.min(0.95, state.printOffsetY + dy));
+  drawCanvas();
+}
+
+function endDrag(e) {
+  state.dragging = false;
+  const canvas = document.getElementById('overlayCanvas');
+  canvas.style.cursor = 'move';
+}
+
+// ── DRAW CANVAS ──
+function drawCanvas() {
+  const canvas = document.getElementById('overlayCanvas');
+  const ctx = canvas.getContext('2d');
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!state.wallImg) return;
+
+  // Draw wall image — contain
+  const imgRatio = state.wallImg.width / state.wallImg.height;
+  const canvasRatio = canvas.width / canvas.height;
+  let drawW, drawH, drawX, drawY;
+
+  if (imgRatio > canvasRatio) {
+    drawW = canvas.width;
+    drawH = canvas.width / imgRatio;
+    drawX = 0;
+    drawY = (canvas.height - drawH) / 2;
+  } else {
+    drawH = canvas.height;
+    drawW = canvas.height * imgRatio;
+    drawX = (canvas.width - drawW) / 2;
+    drawY = 0;
+  }
+
+  ctx.drawImage(state.wallImg, drawX, drawY, drawW, drawH);
+
+  if (state.selectedPrint === null) return;
+
+  // Draw print overlay
+  const p = prints[state.selectedPrint];
+  const pw = canvas.width * (state.scale / 100);
+  const ph = pw / p.ratio;
+  const px = state.printX * canvas.width - pw / 2;
+  const py = state.printY * canvas.height - ph / 2;
+
+  // Shadow
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetX = 4;
+  ctx.shadowOffsetY = 8;
+
+  // Draw print image or gradient
+  if (p.src) {
+    const img = new Image();
+    img.src = p.src;
+    ctx.drawImage(img, px, py, pw, ph);
+  } else {
+    // Gradient fallback
+    const grad = ctx.createLinearGradient(px, py, px + pw, py + ph);
+    const colors = p.color.match(/#[0-9a-f]{6}/gi) || ['#666', '#999'];
+    colors.forEach((c, i) => grad.addColorStop(i / (colors.length - 1), c));
+    ctx.fillStyle = grad;
+    ctx.fillRect(px, py, pw, ph);
+  }
+
+  ctx.restore();
+
+  // White frame
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = Math.max(2, pw * 0.015);
+  ctx.strokeRect(px, py, pw, ph);
+
+  // Subtle inner shadow on print
+  const innerGrad = ctx.createLinearGradient(px, py, px, py + ph * 0.3);
+  innerGrad.addColorStop(0, 'rgba(0,0,0,0.15)');
+  innerGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = innerGrad;
+  ctx.fillRect(px, py, pw, ph);
+
+  // Size label
+  const s = p.sizes[state.selectedSize];
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.font = `300 ${Math.max(9, pw * 0.06)}px 'Jost', sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(s.label + ' cm', px + pw / 2, py + ph + Math.max(14, pw * 0.08));
+}
+
+// ── DRAG & DROP ZONE ──
+function setupDragDrop() {
+  const zone = document.getElementById('dropZone');
+  const side = document.getElementById('canvasSide');
+
+  side.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.classList.add('drag-over');
+  });
+
+  side.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+
+  side.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadWallImage(file);
+  });
+
+  // Click anywhere on drop zone
+  zone.addEventListener('click', () => document.getElementById('fileInput').click());
+}
+
+// ── CONTROLS ──
+function resetPosition() {
+  state.printX = 0.5;
+  state.printY = 0.4;
+  drawCanvas();
+}
+
+function changeWall() {
+  document.getElementById('fileInput').click();
+}
+
+function downloadPreview() {
+  if (!state.wallImg) return;
+  const canvas = document.getElementById('overlayCanvas');
+  const link = document.createElement('a');
+  link.download = 'rewide-wall-preview.jpg';
+  link.href = canvas.toDataURL('image/jpeg', 0.92);
+  link.click();
+  showNotif('Preview saved to your downloads');
+}
+
+// ── ORDER BTN ──
+document.getElementById('orderBtn').addEventListener('click', () => {
+  if (state.selectedPrint === null) return;
+  const p = prints[state.selectedPrint];
+  const s = p.sizes[state.selectedSize];
+  // Build Shopify URL — opens product page, size pre-selected via variant param
+  const url = `${SHOP}/${p.shopSlug}`;
+  showNotif(`Opening order page for ${p.title} ${s.label}cm…`);
+  setTimeout(() => window.open(url, '_blank'), 600);
+});
+
+// ── NOTIFICATIONS ──
+function showNotif(msg) {
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.classList.add('show');
+  setTimeout(() => n.classList.remove('show'), 3000);
+}
+
+init();
+</script>
+</body>
+</html>
