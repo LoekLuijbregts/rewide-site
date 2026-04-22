@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rewide — See it on your wall</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:#F5F0E8; --warm:#FAF8F4; --dark:#1C1C1A;
+  --stone:#8C8880; --gold:#B8945A; --goldl:#D4AE7A;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--dark);color:var(--warm);font-family:'Jost',sans-serif;font-weight:300;min-height:100vh}
+
+.header{padding:28px 48px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(250,248,244,0.08)}
+.logo{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;letter-spacing:.12em;color:var(--warm);text-decoration:none}
+.header-tag{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
+
+.tool-wrap{display:grid;grid-template-columns:1fr 380px;min-height:calc(100vh - 85px)}
+
+/* CANVAS SIDE */
+.canvas-side{position:relative;background:#0F0F0E;overflow:hidden;display:flex;align-items:center;justify-content:center}
+
+.drop-zone{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;cursor:pointer;transition:background .3s;z-index:2}
+.drop-zone:hover,.drop-zone.drag-over{background:rgba(184,148,90,.04)}
+.drop-zone.hidden{display:none}
+.drop-icon{width:72px;height:72px;border:1px solid rgba(184,148,90,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.6;transition:all .3s}
+.drop-zone:hover .drop-icon,.drop-zone.drag-over .drop-icon{border-color:var(--gold);opacity:1;transform:scale(1.05)}
+.drop-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:var(--warm);opacity:.65;text-align:center}
+.drop-sub{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);text-align:center}
+.drop-btn{margin-top:6px;padding:11px 28px;border:1px solid rgba(184,148,90,.35);background:none;color:var(--goldl);font-family:'Jost',sans-serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;transition:all .3s}
+.drop-btn:hover{background:rgba(184,148,90,.08);border-color:var(--gold)}
+
+.canvas-container{position:absolute;inset:0;display:none;align-items:center;justify-content:center}
+.canvas-container.active{display:flex}
+#overlayCanvas{position:absolute;inset:0;width:100%;height:100%;cursor:move}
+
+.hint{position:absolute;top:20px;left:50%;transform:translateX(-50%);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:rgba(250,248,244,.3);background:rgba(28,28,26,.5);padding:6px 16px;white-space:nowrap;display:none;z-index:5}
+.hint.active{display:block}
+
+.canvas-controls{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:none;gap:0;background:rgba(20,20,18,.9);backdrop-filter:blur(8px);padding:10px 20px;border:1px solid rgba(250,248,244,.07);z-index:5}
+.canvas-controls.active{display:flex}
+.ctrl-btn{background:none;border:none;color:rgba(250,248,244,.5);font-family:'Jost',sans-serif;font-size:10px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;padding:4px 14px;transition:color .2s;display:flex;align-items:center;gap:6px}
+.ctrl-btn:hover{color:var(--goldl)}
+.ctrl-btn+.ctrl-btn{border-left:1px solid rgba(250,248,244,.1)}
+
+/* PANEL */
+.panel{background:var(--warm);padding:40px 32px;display:flex;flex-direction:column;overflow-y:auto;color:var(--dark)}
+.panel-eyebrow{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+.panel-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;line-height:1.2;color:var(--dark);margin-bottom:6px}
+.panel-sub{font-size:13px;line-height:1.65;color:var(--stone);margin-bottom:28px}
+
+.sec-label{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--stone);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid rgba(140,136,128,.18)}
+
+/* Steps */
+.steps{margin-bottom:24px}
+.step-row{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(140,136,128,.1)}
+.step-row:last-child{border-bottom:none}
+.step-n{font-family:'Cormorant Garamond',serif;font-size:18px;color:rgba(184,148,90,.4);line-height:1;min-width:18px}
+.step-t{font-size:12px;color:var(--stone);line-height:1.6;padding-top:1px}
+
+.divider{height:1px;background:rgba(140,136,128,.15);margin:20px 0}
+
+/* Print grid */
+.print-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:24px}
+.print-card{border:1px solid rgba(140,136,128,.22);padding:0 0 12px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
+.print-card:hover{border-color:rgba(184,148,90,.45)}
+.print-card.active{border-color:var(--gold);background:rgba(184,148,90,.04)}
+.print-card.active::after{content:'✓';position:absolute;top:8px;right:9px;font-size:10px;color:var(--gold);background:var(--warm);padding:1px 4px}
+.print-thumb{width:100%;height:90px;object-fit:cover;display:block;margin-bottom:9px;background:var(--cream)}
+.print-author{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--gold);margin:0 10px 3px}
+.print-name{font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:300;color:var(--dark);margin:0 10px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.print-price-tag{font-size:11px;color:var(--stone);margin:0 10px}
+
+/* Size grid */
+.size-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:22px}
+.size-btn{padding:10px 4px;border:1px solid rgba(140,136,128,.22);background:none;cursor:pointer;text-align:center;transition:all .2s;font-family:'Jost',sans-serif}
+.size-btn:hover{border-color:rgba(184,148,90,.45)}
+.size-btn.active{border-color:var(--gold);background:rgba(184,148,90,.05)}
+.size-dim{display:block;font-size:12px;color:var(--dark);font-weight:400;margin-bottom:2px}
+.size-price{display:block;font-size:10px;color:var(--stone)}
+
+/* Slider */
+.slider-wrap{margin-bottom:22px}
+.slider-row{display:flex;align-items:center;gap:10px;margin-top:8px}
+.slider-row input[type=range]{flex:1;-webkit-appearance:none;height:1px;background:rgba(140,136,128,.3);outline:none}
+.slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--gold);border-radius:50%;cursor:pointer}
+.slider-val{font-size:11px;color:var(--stone);min-width:30px;text-align:right}
+
+/* Info block */
+.info-block{background:var(--cream);padding:14px;margin-bottom:22px;min-height:80px}
+.info-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300;color:var(--dark);margin-bottom:3px}
+.info-detail{font-size:11px;color:var(--stone);line-height:1.55}
+.info-price{font-size:22px;font-family:'Cormorant Garamond',serif;color:var(--dark);margin-top:8px}
+
+/* CTA */
+.cta-btn{width:100%;padding:17px;background:var(--dark);color:var(--warm);border:none;cursor:pointer;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:.22em;text-transform:uppercase;transition:background .3s;margin-bottom:10px}
+.cta-btn:hover{background:var(--gold)}
+.cta-btn:disabled{opacity:.3;cursor:not-allowed;background:var(--dark)}
+.guarantee{font-size:10px;color:var(--stone);text-align:center;line-height:1.7}
+
+/* Notif */
+.notif{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--dark);color:var(--warm);padding:11px 22px;font-size:11px;letter-spacing:.08em;border-left:2px solid var(--gold);transition:transform .4s ease;z-index:1000;white-space:nowrap}
+.notif.show{transform:translateX(-50%) translateY(0)}
+
+#fileInput{display:none}
+
+@media(max-width:860px){
+  .tool-wrap{grid-template-columns:1fr}
+  .canvas-side{min-height:55vw}
+  .header{padding:18px 20px}
+  .panel{padding:28px 20px}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a href="/" class="logo">Rewide</a>
+  <span class="header-tag">Wall Visualiser</span>
+</header>
+
+<div class="tool-wrap">
+
+  <div class="canvas-side" id="canvasSide">
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon">🏠</div>
+      <p class="drop-title">Upload your wall</p>
+      <p class="drop-sub">JPG or PNG — any size</p>
+      <button class="drop-btn" onclick="document.getElementById('fileInput').click()">Choose photo</button>
+    </div>
+    <div class="canvas-container" id="canvasContainer">
+      <canvas id="overlayCanvas"></canvas>
+      <div class="hint active" id="hint">Drag the print to position it</div>
+    </div>
+    <div class="canvas-controls" id="canvasControls">
+      <button class="ctrl-btn" onclick="resetPos()">↺ Reset</button>
+      <button class="ctrl-btn" onclick="document.getElementById('fileInput').click()">↑ New wall</button>
+      <button class="ctrl-btn" onclick="downloadPreview()">↓ Save preview</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="panel-eyebrow">Rewide — Wall Visualiser</p>
+    <h1 class="panel-title">See it on your wall</h1>
+    <p class="panel-sub">Upload a photo of your wall. Pick a print. Drag it into position.</p>
+
+    <div class="steps">
+      <div class="step-row"><span class="step-n">1</span><span class="step-t">Upload a photo of your wall — natural light works best</span></div>
+      <div class="step-row"><span class="step-n">2</span><span class="step-t">Select a print from the collection below</span></div>
+      <div class="step-row"><span class="step-n">3</span><span class="step-t">Choose your size and drag the print into position</span></div>
+      <div class="step-row"><span class="step-n">4</span><span class="step-t">Order — ships from Tilburg within 7–10 days</span></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <p class="sec-label">Choose a print</p>
+    <div class="print-grid" id="printGrid"></div>
+
+    <p class="sec-label">Size</p>
+    <div class="size-grid" id="sizeGrid"></div>
+
+    <div class="slider-wrap">
+      <p class="sec-label">Scale on wall</p>
+      <div class="slider-row">
+        <span style="font-size:10px;color:var(--stone)">S</span>
+        <input type="range" id="scaleSlider" min="5" max="65" value="22" oninput="updateScale(this.value)">
+        <span style="font-size:10px;color:var(--stone)">L</span>
+        <span class="slider-val" id="scaleVal">22%</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="info-block">
+      <div class="info-title" id="infoTitle">Select a print above</div>
+      <div class="info-detail" id="infoDetail">Choose a work from the collection to visualise it on your wall</div>
+      <div class="info-price" id="infoPrice"></div>
+    </div>
+
+    <button class="cta-btn" id="orderBtn" disabled>Order this print</button>
+    <p class="guarantee">Printed in Tilburg · Ships 7–10 days · Free returns 30 days</p>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" onchange="handleFile(event)">
+<div class="notif" id="notif"></div>
+
+<script>
+const SHOP = 'https://art-for-freedom-2.myshopify.com/products';
+
+const prints = [
+  {
+    id: 'loek-turkey',
+    shopSlug: 'the-freedom-of-turkiye-_-a',
+    title: 'The Freedom of Türkiye',
+    author: 'Loek Luijbregts',
+    location: 'Cappadocia, Türkiye',
+    sizes: [
+      { label: '30×40', price: 100, variantId: 53762209775943 },
+      { label: '50×70', price: 120, variantId: 53762209808711 },
+      { label: '70×100', price: 140, variantId: 53762209841479 }
+    ],
+    src: 'https://cdn.shopify.com/s/files/1/0944/7984/3655/files/Cappadocia_-_Turkiye_-_Copyright_Loek_Luijbregts_7.jpg?v=1766584841',
+    ratio: 3/2
+  },
+  {
+    id: 'ryan-surf',
+    shopSlug: 'le-surf',
+    title: 'Le Surf',
+    author: 'Ryan Le Garrec',
+    location: 'Atlantic Coast',
+    sizes: [
+      { label: '30×40', price: 100, variantId: 53762183889223 },
+      { label: '50×70', price: 120, variantId: 53762183921991 },
+      { label: '70×100', price: 140, variantId: 53762183954759 }
+    ],
+    src: 'https://cdn.shopify.com/s/files/1/0944/7984/3655/files/Screenshot2026-04-22at16.58.28.png?v=1776872100',
+    ratio: 3/2
+  },
+  {
+    id: 'leon-giro',
+    shopSlug: 'skiers-jump-over-tadej',
+    title: 'Skiers Jump Over Tadej',
+    author: 'Léon van Bon',
+    location: 'Giro d\'Italia, Italy',
+    sizes: [
+      { label: '30×40', price: 100, variantId: 53762170093895 },
+      { label: '50×70', price: 120, variantId: 53762170126663 },
+      { label: '70×100', price: 140, variantId: 53762170159431 }
+    ],
+    src: 'https://cdn.shopify.com/s/files/1/0944/7984/3655/files/Winnerbestcyclingphoto2025-LeonvanBon-permissiontousewithnamephotographerincontexttoMarkGunterPhotoAwards.jpg?v=1776871980',
+    ratio: 3/4
+  },
+  {
+    id: 'jop-pastel',
+    shopSlug: 'pastel-summer-sky',
+    title: 'Pastel Summer Sky',
+    author: 'Jop Hermans',
+    location: 'Scheveningen, NL',
+    sizes: [
+      { label: '30×40', price: 100, variantId: 53762157150535 },
+      { label: '50×70', price: 120, variantId: 53762157183303 },
+      { label: '70×100', price: 140, variantId: 53762157216071 }
+    ],
+    src: 'https://cdn.shopify.com/s/files/1/0944/7984/3655/files/pastel-summer-sky-woman-silhouette-north-sea-surfing-netherlands-print-dibond.webp?v=1776871750',
+    ratio: 3/4
+  }
+];
+
+// Preload all print images
+const imgCache = {};
+prints.forEach(p => {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = p.src;
+  img.onload = () => { imgCache[p.id] = img; if (state.selectedPrint !== null && prints[state.selectedPrint].id === p.id) drawCanvas(); };
+  imgCache[p.id] = img;
+});
+
+let state = {
+  wallImg: null,
+  selectedPrint: null,
+  selectedSize: 1, // default 50x70
+  scale: 22,
+  printX: 0.5,
+  printY: 0.38,
+  dragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  printOffX: 0,
+  printOffY: 0
+};
+
+// ── RENDER ──
+function renderPrints() {
+  document.getElementById('printGrid').innerHTML = prints.map((p, i) => `
+    <div class="print-card" id="card-${p.id}" onclick="selectPrint(${i})">
+      <img class="print-thumb" src="${p.src}" alt="${p.title}" loading="lazy">
+      <div class="print-author">${p.author}</div>
+      <div class="print-name">${p.title}</div>
+      <div class="print-price-tag">From €${p.sizes[0].price}</div>
+    </div>
+  `).join('');
+}
+
+function renderSizes(p) {
+  document.getElementById('sizeGrid').innerHTML = p.sizes.map((s, i) => `
+    <button class="size-btn ${i === state.selectedSize ? 'active' : ''}" onclick="selectSize(${i})">
+      <span class="size-dim">${s.label}</span>
+      <span class="size-price">€${s.price}</span>
+    </button>
+  `).join('');
+}
+
+function updateInfo() {
+  if (state.selectedPrint === null) return;
+  const p = prints[state.selectedPrint];
+  const s = p.sizes[state.selectedSize];
+  document.getElementById('infoTitle').textContent = p.title;
+  document.getElementById('infoDetail').textContent = `${p.author} · ${p.location} · ${s.label} cm`;
+  document.getElementById('infoPrice').textContent = `€${s.price}`;
+  document.getElementById('orderBtn').disabled = false;
+  document.getElementById('orderBtn').textContent = `Order this print — €${s.price}`;
+}
+
+// ── SELECT ──
+function selectPrint(i) {
+  state.selectedPrint = i;
+  document.querySelectorAll('.print-card').forEach(c => c.classList.remove('active'));
+  document.getElementById(`card-${prints[i].id}`).classList.add('active');
+  renderSizes(prints[i]);
+  updateInfo();
+  if (state.wallImg) drawCanvas();
+  else showNotif('Now upload your wall photo →');
+}
+
+function selectSize(i) {
+  state.selectedSize = i;
+  document.querySelectorAll('.size-btn').forEach((b, j) => b.classList.toggle('active', j === i));
+  updateInfo();
+  if (state.wallImg) drawCanvas();
+}
+
+function updateScale(v) {
+  state.scale = parseInt(v);
+  document.getElementById('scaleVal').textContent = v + '%';
+  if (state.wallImg) drawCanvas();
+}
+
+// ── FILE ──
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (file) loadWall(file);
+  e.target.value = '';
+}
+
+function loadWall(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.wallImg = img;
+      state.printX = 0.5;
+      state.printY = 0.38;
+      showCanvas();
+      if (state.selectedPrint === null) showNotif('Wall loaded — now choose a print →');
+      else drawCanvas();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function showCanvas() {
+  document.getElementById('dropZone').classList.add('hidden');
+  document.getElementById('canvasContainer').classList.add('active');
+  document.getElementById('canvasControls').classList.add('active');
+}
+
+// ── CANVAS ──
+function setupCanvas() {
+  const canvas = document.getElementById('overlayCanvas');
+  const side = document.getElementById('canvasSide');
+
+  function resize() {
+    canvas.width = side.clientWidth;
+    canvas.height = side.clientHeight;
+    if (state.wallImg) drawCanvas();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Mouse
+  canvas.addEventListener('mousedown', e => startDrag(e.clientX, e.clientY, canvas));
+  canvas.addEventListener('mousemove', e => onDrag(e.clientX, e.clientY, canvas));
+  canvas.addEventListener('mouseup', () => endDrag(canvas));
+  canvas.addEventListener('mouseleave', () => endDrag(canvas));
+
+  // Touch
+  canvas.addEventListener('touchstart', e => { startDrag(e.touches[0].clientX, e.touches[0].clientY, canvas); e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchmove', e => { onDrag(e.touches[0].clientX, e.touches[0].clientY, canvas); e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchend', () => endDrag(canvas));
+}
+
+function getPrintRect(canvas) {
+  if (!state.wallImg || state.selectedPrint === null) return null;
+  const p = prints[state.selectedPrint];
+  const pw = canvas.width * (state.scale / 100);
+  const ph = pw / p.ratio;
+  return {
+    x: state.printX * canvas.width - pw / 2,
+    y: state.printY * canvas.height - ph / 2,
+    w: pw, h: ph
+  };
+}
+
+function startDrag(cx, cy, canvas) {
+  if (state.selectedPrint === null) return;
+  const r = canvas.getBoundingClientRect();
+  const mx = cx - r.left, my = cy - r.top;
+  const pr = getPrintRect(canvas);
+  if (!pr) return;
+  if (mx >= pr.x && mx <= pr.x + pr.w && my >= pr.y && my <= pr.y + pr.h) {
+    state.dragging = true;
+    state.dragStartX = mx;
+    state.dragStartY = my;
+    state.printOffX = state.printX;
+    state.printOffY = state.printY;
+    canvas.style.cursor = 'grabbing';
+    document.getElementById('hint').classList.remove('active');
+  }
+}
+
+function onDrag(cx, cy, canvas) {
+  if (!state.dragging) return;
+  const r = canvas.getBoundingClientRect();
+  const mx = cx - r.left, my = cy - r.top;
+  state.printX = Math.max(0.05, Math.min(0.95, state.printOffX + (mx - state.dragStartX) / canvas.width));
+  state.printY = Math.max(0.05, Math.min(0.95, state.printOffY + (my - state.dragStartY) / canvas.height));
+  drawCanvas();
+}
+
+function endDrag(canvas) {
+  state.dragging = false;
+  canvas.style.cursor = 'move';
+}
+
+function drawCanvas() {
+  const canvas = document.getElementById('overlayCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!state.wallImg) return;
+
+  // Draw wall — contain
+  const wr = state.wallImg.width / state.wallImg.height;
+  const cr = canvas.width / canvas.height;
+  let dw, dh, dx, dy;
+  if (wr > cr) { dw = canvas.width; dh = dw / wr; dx = 0; dy = (canvas.height - dh) / 2; }
+  else { dh = canvas.height; dw = dh * wr; dy = 0; dx = (canvas.width - dw) / 2; }
+  ctx.drawImage(state.wallImg, dx, dy, dw, dh);
+
+  if (state.selectedPrint === null) return;
+
+  const p = prints[state.selectedPrint];
+  const pw = canvas.width * (state.scale / 100);
+  const ph = pw / p.ratio;
+  const px = state.printX * canvas.width - pw / 2;
+  const py = state.printY * canvas.height - ph / 2;
+
+  // Shadow
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.4)';
+  ctx.shadowBlur = 28;
+  ctx.shadowOffsetX = 5;
+  ctx.shadowOffsetY = 10;
+
+  const cached = imgCache[p.id];
+  if (cached && cached.complete && cached.naturalWidth > 0) {
+    ctx.drawImage(cached, px, py, pw, ph);
+  } else {
+    // Fallback gradient while loading
+    const g = ctx.createLinearGradient(px, py, px+pw, py+ph);
+    g.addColorStop(0, '#6a6a5a'); g.addColorStop(1, '#3a3a2a');
+    ctx.fillStyle = g;
+    ctx.fillRect(px, py, pw, ph);
+  }
+  ctx.restore();
+
+  // White frame
+  ctx.strokeStyle = 'rgba(255,255,255,0.88)';
+  ctx.lineWidth = Math.max(1.5, pw * 0.012);
+  ctx.strokeRect(px, py, pw, ph);
+
+  // Top shadow gloss
+  const gloss = ctx.createLinearGradient(px, py, px, py + ph * 0.28);
+  gloss.addColorStop(0, 'rgba(0,0,0,0.18)');
+  gloss.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gloss;
+  ctx.fillRect(px, py, pw, ph);
+
+  // Size label below print
+  const s = p.sizes[state.selectedSize];
+  const fontSize = Math.max(9, pw * 0.055);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = `300 ${fontSize}px 'Jost',sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(`${s.label} cm · €${s.price}`, px + pw/2, py + ph + fontSize * 1.4);
+}
+
+// ── DRAG & DROP ZONE ──
+const side = document.getElementById('canvasSide');
+const dz = document.getElementById('dropZone');
+side.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+side.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+side.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) loadWall(f);
+});
+dz.addEventListener('click', () => document.getElementById('fileInput').click());
+
+// ── CONTROLS ──
+function resetPos() {
+  state.printX = 0.5; state.printY = 0.38;
+  drawCanvas();
+}
+
+function downloadPreview() {
+  if (!state.wallImg) { showNotif('Upload your wall first'); return; }
+  const canvas = document.getElementById('overlayCanvas');
+  const link = document.createElement('a');
+  link.download = 'rewide-wall-preview.jpg';
+  link.href = canvas.toDataURL('image/jpeg', 0.92);
+  link.click();
+  showNotif('Preview saved ↓');
+}
+
+// ── ORDER ──
+document.getElementById('orderBtn').addEventListener('click', () => {
+  if (state.selectedPrint === null) return;
+  const p = prints[state.selectedPrint];
+  const s = p.sizes[state.selectedSize];
+  const url = `${SHOP}/${p.shopSlug}?variant=${s.variantId}`;
+  showNotif(`Opening ${p.title} ${s.label}cm…`);
+  setTimeout(() => window.open(url, '_blank'), 500);
+});
+
+// ── NOTIF ──
+function showNotif(msg) {
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.classList.add('show');
+  clearTimeout(n._t);
+  n._t = setTimeout(() => n.classList.remove('show'), 2800);
+}
+
+// ── INIT ──
+renderPrints();
+setupCanvas();
+</script>
+</body>
+</html>
